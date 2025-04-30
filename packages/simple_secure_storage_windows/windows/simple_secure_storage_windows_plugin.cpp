@@ -223,9 +223,10 @@ namespace simple_secure_storage {
     if (!result) {
       return getReturnTuple(result);
     }
+    std::wstring allTargets = getTargetName("*");
     for (DWORD i = 0; i < count; ++i) {
       auto credential = credentials[i];
-      result = CredDelete(credential->TargetName, credential->Type, 0);
+      result = CredDelete(allTargets.c_str(), credential->Type, 0);
       if (!result) {
         return getReturnTuple(result);
       }

@@ -18,22 +18,21 @@ namespace simple_secure_storage {
   ) {
     auto channel =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-        registrar->messenger(), "fr.skyost.simple_secure_storage", &flutter::StandardMethodCodec::GetInstance()
+        registrar->messenger(),
+        "fr.skyost.simple_secure_storage",
+        &flutter::StandardMethodCodec::GetInstance()
       );
 
     auto plugin = std::make_unique<SimpleSecureStorageWindowsPlugin>();
-
     channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
         plugin_pointer->HandleMethodCall(call, std::move(result));
       }
     );
-
     registrar->AddPlugin(std::move(plugin));
   }
 
   SimpleSecureStorageWindowsPlugin::SimpleSecureStorageWindowsPlugin() {}
-
   SimpleSecureStorageWindowsPlugin::~SimpleSecureStorageWindowsPlugin() {}
 
   void SimpleSecureStorageWindowsPlugin::HandleMethodCall(
@@ -41,8 +40,15 @@ namespace simple_secure_storage {
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result
   ) {
     const auto &method = methodCall.method_name();
+
     const auto *arguments = std::get_if<EncodableMap>(methodCall.arguments());
+    if (!arguments) {
+      result->Error("invalid_arguments", "Expected arguments map");
+      return;
+    }
+
     if (method.compare("initialize") == 0) {
+      // Validar 'namespace'
       auto it_ns = arguments->find(EncodableValue("namespace"));
       if (it_ns == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'namespace' argument");
@@ -51,13 +57,19 @@ namespace simple_secure_storage {
       auto _appNamespace = std::get<std::string>(it_ns->second);
       initialize(_appNamespace);
       result->Success(flutter::EncodableValue(true));
+
     } else if (method.compare("has") == 0) {
       if (!ensureInitialized(result)) {
         return;
       }
-      auto key =
-        std::get<std::string>(arguments->find(EncodableValue("key"))->second);
+      auto itKey = arguments->find(EncodableValue("key"));
+      if (itKey == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'key' argument");
+        return;
+      }
+      auto key = std::get<std::string>(itKey->second);
       result->Success(flutter::EncodableValue(has(key)));
+
     } else if (method.compare("list") == 0) {
       if (!ensureInitialized(result)) {
         return;
@@ -65,47 +77,73 @@ namespace simple_secure_storage {
       auto map = list();
       auto encodableMap = EncodableMap{};
       for (auto &[key, value] : map) {
-        encodableMap.insert({EncodableValue(std::string(key)), EncodableValue(std::string(value))});
+        encodableMap.insert(
+          {EncodableValue(std::string(key)), EncodableValue(std::string(value))}
+        );
       }
       result->Success(EncodableValue(encodableMap));
+
     } else if (method.compare("read") == 0) {
       if (!ensureInitialized(result)) {
         return;
       }
-      auto key =
-        std::get<std::string>(arguments->find(EncodableValue("key"))->second);
+      auto itKey = arguments->find(EncodableValue("key"));
+      if (itKey == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'key' argument");
+        return;
+      }
+      auto key = std::get<std::string>(itKey->second);
       auto value = read(key);
       if (value.has_value()) {
         result->Success(flutter::EncodableValue(value.value()));
       } else {
         result->Success(flutter::EncodableValue());
       }
+
     } else if (method.compare("write") == 0) {
       if (!ensureInitialized(result)) {
         return;
       }
-      auto key =
-        std::get<std::string>(arguments->find(EncodableValue("key"))->second);
-      auto value =
-        std::get<std::string>(arguments->find(EncodableValue("value"))->second);
+      auto itKey = arguments->find(EncodableValue("key"));
+      if (itKey == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'key' argument");
+        return;
+      }
+      auto key = std::get<std::string>(itKey->second);
+
+      // Validar 'value'
+      auto itVal = arguments->find(EncodableValue("value"));
+      if (itVal == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'value' argument");
+        return;
+      }
+      auto value = std::get<std::string>(itVal->second);
+
       auto callResult = write(key, value);
       if (std::get<0>(callResult) == 0) {
         result->Success(flutter::EncodableValue(true));
       } else {
         result->Error("write_error", std::get<1>(callResult), std::get<0>(callResult));
       }
+
     } else if (method.compare("delete") == 0) {
       if (!ensureInitialized(result)) {
         return;
       }
-      auto key =
-        std::get<std::string>(arguments->find(EncodableValue("key"))->second);
+      auto itKey = arguments->find(EncodableValue("key"));
+      if (itKey == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'key' argument");
+        return;
+      }
+      auto key = std::get<std::string>(itKey->second);
+
       auto callResult = remove(key);
       if (std::get<0>(callResult) == 0) {
         result->Success(flutter::EncodableValue(true));
       } else {
         result->Error("delete_error", std::get<1>(callResult), std::get<0>(callResult));
       }
+
     } else if (method.compare("clear") == 0) {
       if (!ensureInitialized(result)) {
         return;
@@ -116,12 +154,13 @@ namespace simple_secure_storage {
       } else {
         result->Error("clear_error", std::get<1>(callResult), std::get<0>(callResult));
       }
+
     } else {
       result->NotImplemented();
     }
   }
 
-  // Initializes the plugin .
+  // Initializes the plugin.
   void SimpleSecureStorageWindowsPlugin::initialize(std::string _appNamespace) {
     this->appNamespace = _appNamespace;
   }
@@ -147,7 +186,7 @@ namespace simple_secure_storage {
 
   // Lists all key / value pairs.
   std::map<std::string, std::string> SimpleSecureStorageWindowsPlugin::list() {
-    std::wstring targetName = getTargetName("*");
+    std::wstring targetName = getTargetName(L"*");
     DWORD count;
     PCREDENTIAL *credentials;
     BOOL result = CredEnumerate(targetName.c_str(), 0, &count, &credentials);
@@ -171,9 +210,7 @@ namespace simple_secure_storage {
   ) {
     auto targetName = getTargetName(key);
     auto userName = toUtf16(key);
-
     auto credentialValue = value.c_str();
-
     CREDENTIAL credential = {};
     credential.Flags = 0;
     credential.Type = CRED_TYPE_GENERIC;
@@ -182,7 +219,6 @@ namespace simple_secure_storage {
     credential.CredentialBlobSize = (DWORD)(1 + strlen(credentialValue));
     credential.CredentialBlob = (LPBYTE)credentialValue;
     credential.Persist = CRED_PERSIST_LOCAL_MACHINE;
-
     BOOL result = CredWrite(&credential, 0);
     return getReturnTuple(result);
   }
@@ -198,7 +234,7 @@ namespace simple_secure_storage {
 
   // Clear all data from the secure storage.
   std::tuple<int, std::string> SimpleSecureStorageWindowsPlugin::clear() {
-    std::wstring targetName = getTargetName("*");
+    std::wstring targetName = getTargetName(L"*");
     DWORD count;
     PCREDENTIAL *credentials;
     BOOL result = CredEnumerate(targetName.c_str(), 0, &count, &credentials);
@@ -242,7 +278,9 @@ namespace simple_secure_storage {
   }
 
   // Ensures the plugin has been initialized.
-  bool SimpleSecureStorageWindowsPlugin::ensureInitialized(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result) {
+  bool SimpleSecureStorageWindowsPlugin::ensureInitialized(
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result
+  ) {
     if (!appNamespace.has_value()) {
       result->Error("namespace_is_null", "Please make sure you have initialized the plugin.");
       return false;

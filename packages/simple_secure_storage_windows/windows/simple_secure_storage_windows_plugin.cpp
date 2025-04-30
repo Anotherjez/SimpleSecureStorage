@@ -47,8 +47,7 @@ namespace simple_secure_storage {
       return;
     }
 
-    if (method.compare("initialize") == 0) {
-      // Validar 'namespace'
+    if (method == "initialize") {
       auto it_ns = arguments->find(EncodableValue("namespace"));
       if (it_ns == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'namespace' argument");
@@ -58,10 +57,8 @@ namespace simple_secure_storage {
       initialize(_appNamespace);
       result->Success(flutter::EncodableValue(true));
 
-    } else if (method.compare("has") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "has") {
+      if (!ensureInitialized(result)) return;
       auto itKey = arguments->find(EncodableValue("key"));
       if (itKey == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'key' argument");
@@ -70,23 +67,17 @@ namespace simple_secure_storage {
       auto key = std::get<std::string>(itKey->second);
       result->Success(flutter::EncodableValue(has(key)));
 
-    } else if (method.compare("list") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "list") {
+      if (!ensureInitialized(result)) return;
       auto map = list();
-      auto encodableMap = EncodableMap{};
+      EncodableMap encodableMap;
       for (auto &[key, value] : map) {
-        encodableMap.insert(
-          {EncodableValue(std::string(key)), EncodableValue(std::string(value))}
-        );
+        encodableMap.insert({EncodableValue(key), EncodableValue(value)});
       }
       result->Success(EncodableValue(encodableMap));
 
-    } else if (method.compare("read") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "read") {
+      if (!ensureInitialized(result)) return;
       auto itKey = arguments->find(EncodableValue("key"));
       if (itKey == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'key' argument");
@@ -95,62 +86,53 @@ namespace simple_secure_storage {
       auto key = std::get<std::string>(itKey->second);
       auto value = read(key);
       if (value.has_value()) {
-        result->Success(flutter::EncodableValue(value.value()));
+        result->Success(EncodableValue(value.value()));
       } else {
-        result->Success(flutter::EncodableValue());
+        result->Success(EncodableValue());
       }
 
-    } else if (method.compare("write") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "write") {
+      if (!ensureInitialized(result)) return;
+      // ── 2d) Validar key ────────────────────────────────────────────────────
       auto itKey = arguments->find(EncodableValue("key"));
       if (itKey == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'key' argument");
         return;
       }
       auto key = std::get<std::string>(itKey->second);
-
-      // Validar 'value'
       auto itVal = arguments->find(EncodableValue("value"));
       if (itVal == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'value' argument");
         return;
       }
       auto value = std::get<std::string>(itVal->second);
-
       auto callResult = write(key, value);
       if (std::get<0>(callResult) == 0) {
-        result->Success(flutter::EncodableValue(true));
+        result->Success(EncodableValue(true));
       } else {
         result->Error("write_error", std::get<1>(callResult), std::get<0>(callResult));
       }
 
-    } else if (method.compare("delete") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "delete") {
+      if (!ensureInitialized(result)) return;
       auto itKey = arguments->find(EncodableValue("key"));
       if (itKey == arguments->end()) {
         result->Error("invalid_arguments", "Missing 'key' argument");
         return;
       }
       auto key = std::get<std::string>(itKey->second);
-
       auto callResult = remove(key);
       if (std::get<0>(callResult) == 0) {
-        result->Success(flutter::EncodableValue(true));
+        result->Success(EncodableValue(true));
       } else {
         result->Error("delete_error", std::get<1>(callResult), std::get<0>(callResult));
       }
 
-    } else if (method.compare("clear") == 0) {
-      if (!ensureInitialized(result)) {
-        return;
-      }
+    } else if (method == "clear") {
+      if (!ensureInitialized(result)) return;
       auto callResult = clear();
       if (std::get<0>(callResult) == 0) {
-        result->Success(flutter::EncodableValue(true));
+        result->Success(EncodableValue(true));
       } else {
         result->Error("clear_error", std::get<1>(callResult), std::get<0>(callResult));
       }

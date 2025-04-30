@@ -168,7 +168,7 @@ namespace simple_secure_storage {
 
   // Lists all key / value pairs.
   std::map<std::string, std::string> SimpleSecureStorageWindowsPlugin::list() {
-    std::wstring targetName = getTargetName(L"*");
+    std::wstring targetName = getTargetName("*");
     DWORD count;
     PCREDENTIAL *credentials;
     BOOL result = CredEnumerate(targetName.c_str(), 0, &count, &credentials);
@@ -216,7 +216,7 @@ namespace simple_secure_storage {
 
   // Clear all data from the secure storage.
   std::tuple<int, std::string> SimpleSecureStorageWindowsPlugin::clear() {
-    std::wstring targetName = getTargetName(L"*");
+    std::wstring targetName = getTargetName("*");
     DWORD count;
     PCREDENTIAL *credentials;
     BOOL result = CredEnumerate(targetName.c_str(), 0, &count, &credentials);

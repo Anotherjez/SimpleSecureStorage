@@ -43,7 +43,12 @@ namespace simple_secure_storage {
     const auto &method = methodCall.method_name();
     const auto *arguments = std::get_if<EncodableMap>(methodCall.arguments());
     if (method.compare("initialize") == 0) {
-      auto _appNamespace = std::get<std::string>(arguments->find(EncodableValue("namespace"))->second);
+      auto it_ns = arguments->find(EncodableValue("namespace"));
+      if (it_ns == arguments->end()) {
+        result->Error("invalid_arguments", "Missing 'namespace' argument");
+        return;
+      }
+      auto _appNamespace = std::get<std::string>(it_ns->second);
       initialize(_appNamespace);
       result->Success(flutter::EncodableValue(true));
     } else if (method.compare("has") == 0) {
@@ -135,7 +140,7 @@ namespace simple_secure_storage {
       auto test = getReturnTuple(result);
       return std::optional<std::string>();
     }
-    std::string value = std::string((char*)credential->CredentialBlob);
+    std::string value = std::string((char *)credential->CredentialBlob);
     CredFree(credential);
     return value;
   }
@@ -237,7 +242,7 @@ namespace simple_secure_storage {
   }
 
   // Ensures the plugin has been initialized.
-  bool SimpleSecureStorageWindowsPlugin::ensureInitialized(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> & result) {
+  bool SimpleSecureStorageWindowsPlugin::ensureInitialized(std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> &result) {
     if (!appNamespace.has_value()) {
       result->Error("namespace_is_null", "Please make sure you have initialized the plugin.");
       return false;

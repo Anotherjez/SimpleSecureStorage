@@ -10,8 +10,8 @@ funding:
   - https://paypal.me/Skyost
 
 environment:
-  sdk: '>=3.6.0 <4.0.0'
-  flutter: '>=3.29.0'
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.29.0"
 
 dependencies:
   flutter:
@@ -21,7 +21,6 @@ dependencies:
   simple_secure_storage_darwin: ^0.2.0+1
   simple_secure_storage_windows: ^0.3.0+1
   simple_secure_storage_linux: ^0.2.2
-  simple_secure_storage_web: ^0.2.1
 
 dev_dependencies:
   flutter_test:
@@ -41,5 +40,3 @@ flutter:
         default_package: simple_secure_storage_windows
       linux:
         default_package: simple_secure_storage_linux
-      web:
-        default_package: simple_secure_storage_web
